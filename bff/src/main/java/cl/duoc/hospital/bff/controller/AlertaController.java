@@ -22,36 +22,36 @@ public class AlertaController {
 
     @GetMapping
     public ResponseEntity<?> getAll() {
-        return restTemplate.getForEntity(msAlertasUrl + "/alertas", Object.class);
+        return proxied(restTemplate.getForEntity(msAlertasUrl + "/alertas", Object.class));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
-        return restTemplate.getForEntity(msAlertasUrl + "/alertas/" + id, Object.class);
+        return proxied(restTemplate.getForEntity(msAlertasUrl + "/alertas/" + id, Object.class));
     }
 
     @GetMapping("/paciente/{pacienteId}")
     public ResponseEntity<?> getByPaciente(@PathVariable Long pacienteId) {
-        return restTemplate.getForEntity(
-                msAlertasUrl + "/alertas/paciente/" + pacienteId, Object.class);
+        return proxied(restTemplate.getForEntity(
+                msAlertasUrl + "/alertas/paciente/" + pacienteId, Object.class));
     }
 
     @GetMapping("/estado/{estado}")
     public ResponseEntity<?> getByEstado(@PathVariable String estado) {
-        return restTemplate.getForEntity(
-                msAlertasUrl + "/alertas/estado/" + estado, Object.class);
+        return proxied(restTemplate.getForEntity(
+                msAlertasUrl + "/alertas/estado/" + estado, Object.class));
     }
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Object alerta) {
-        return restTemplate.postForEntity(msAlertasUrl + "/alertas", alerta, Object.class);
+        return proxied(restTemplate.postForEntity(msAlertasUrl + "/alertas", alerta, Object.class));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Object alerta) {
         HttpEntity<Object> entity = new HttpEntity<>(alerta, jsonHeaders());
-        return restTemplate.exchange(msAlertasUrl + "/alertas/" + id,
-                HttpMethod.PUT, entity, Object.class);
+        return proxied(restTemplate.exchange(msAlertasUrl + "/alertas/" + id,
+                HttpMethod.PUT, entity, Object.class));
     }
 
     @DeleteMapping("/{id}")
@@ -64,5 +64,9 @@ public class AlertaController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
+    }
+
+    private ResponseEntity<?> proxied(ResponseEntity<?> response) {
+        return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
     }
 }

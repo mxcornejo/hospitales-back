@@ -22,36 +22,36 @@ public class SignoVitalController {
 
     @GetMapping
     public ResponseEntity<?> getAll() {
-        return restTemplate.getForEntity(msSignosVitalesUrl + "/signos-vitales", Object.class);
+        return proxied(restTemplate.getForEntity(msSignosVitalesUrl + "/signos-vitales", Object.class));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
-        return restTemplate.getForEntity(msSignosVitalesUrl + "/signos-vitales/" + id, Object.class);
+        return proxied(restTemplate.getForEntity(msSignosVitalesUrl + "/signos-vitales/" + id, Object.class));
     }
 
     @GetMapping("/paciente/{pacienteId}")
     public ResponseEntity<?> getByPaciente(@PathVariable Long pacienteId) {
-        return restTemplate.getForEntity(
-                msSignosVitalesUrl + "/signos-vitales/paciente/" + pacienteId, Object.class);
+        return proxied(restTemplate.getForEntity(
+                msSignosVitalesUrl + "/signos-vitales/paciente/" + pacienteId, Object.class));
     }
 
     @GetMapping("/paciente/{pacienteId}/ultimos")
     public ResponseEntity<?> getUltimos(@PathVariable Long pacienteId) {
-        return restTemplate.getForEntity(
-                msSignosVitalesUrl + "/signos-vitales/paciente/" + pacienteId + "/ultimos", Object.class);
+        return proxied(restTemplate.getForEntity(
+                msSignosVitalesUrl + "/signos-vitales/paciente/" + pacienteId + "/ultimos", Object.class));
     }
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Object signoVital) {
-        return restTemplate.postForEntity(msSignosVitalesUrl + "/signos-vitales", signoVital, Object.class);
+        return proxied(restTemplate.postForEntity(msSignosVitalesUrl + "/signos-vitales", signoVital, Object.class));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Object signoVital) {
         HttpEntity<Object> entity = new HttpEntity<>(signoVital, jsonHeaders());
-        return restTemplate.exchange(msSignosVitalesUrl + "/signos-vitales/" + id,
-                HttpMethod.PUT, entity, Object.class);
+        return proxied(restTemplate.exchange(msSignosVitalesUrl + "/signos-vitales/" + id,
+                HttpMethod.PUT, entity, Object.class));
     }
 
     @DeleteMapping("/{id}")
@@ -64,5 +64,9 @@ public class SignoVitalController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
+    }
+
+    private ResponseEntity<?> proxied(ResponseEntity<?> response) {
+        return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
     }
 }

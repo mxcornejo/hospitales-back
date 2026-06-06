@@ -23,7 +23,11 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 @Configuration
 @EnableWebSecurity
@@ -71,7 +75,7 @@ public class SecurityConfig {
         byte[] keyBytes = Base64.getDecoder().decode(jwtSecret);
         SecretKey secretKey = new SecretKeySpec(keyBytes, "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(secretKey)
-                .macAlgorithm(MacAlgorithm.HS256)
+                .macAlgorithm(MacAlgorithm.HS384)
                 .build();
     }
 
@@ -81,9 +85,19 @@ public class SecurityConfig {
      * es lazy (se realiza al validar el primer token AAD).
      */
     @Bean
-    public JwtDecoder aadJwtDecoder() {
-        String jwkSetUri = "https://login.microsoftonline.com/" + aadTenantId + "/discovery/v2.0/keys";
-        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+    public List<JwtDecoder> aadJwtDecoders() {
+        Set<String> tenants = new LinkedHashSet<>();
+        tenants.add(aadTenantId);
+        tenants.add("common");
+        tenants.add("organizations");
+        tenants.add("consumers");
+
+        List<JwtDecoder> decoders = new ArrayList<>();
+        for (String tenant : tenants) {
+            String jwkSetUri = "https://login.microsoftonline.com/" + tenant + "/discovery/v2.0/keys";
+            decoders.add(NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build());
+        }
+        return decoders;
     }
 
     /**
@@ -92,7 +106,7 @@ public class SecurityConfig {
      */
     @Bean
     public JwtDecoder jwtDecoder() {
-        return new DualJwtDecoder(localJwtDecoder(), aadJwtDecoder());
+        return new DualJwtDecoder(localJwtDecoder(), aadJwtDecoders());
     }
 
     @Bean

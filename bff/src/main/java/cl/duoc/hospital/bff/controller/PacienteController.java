@@ -22,29 +22,29 @@ public class PacienteController {
 
     @GetMapping
     public ResponseEntity<?> getAll() {
-        return restTemplate.getForEntity(msPacientesUrl + "/pacientes", Object.class);
+        return proxied(restTemplate.getForEntity(msPacientesUrl + "/pacientes", Object.class));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
-        return restTemplate.getForEntity(msPacientesUrl + "/pacientes/" + id, Object.class);
+        return proxied(restTemplate.getForEntity(msPacientesUrl + "/pacientes/" + id, Object.class));
     }
 
     @GetMapping("/estado/{estado}")
     public ResponseEntity<?> getByEstado(@PathVariable String estado) {
-        return restTemplate.getForEntity(msPacientesUrl + "/pacientes/estado/" + estado, Object.class);
+        return proxied(restTemplate.getForEntity(msPacientesUrl + "/pacientes/estado/" + estado, Object.class));
     }
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Object paciente) {
-        return restTemplate.postForEntity(msPacientesUrl + "/pacientes", paciente, Object.class);
+        return proxied(restTemplate.postForEntity(msPacientesUrl + "/pacientes", paciente, Object.class));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Object paciente) {
         HttpEntity<Object> entity = new HttpEntity<>(paciente, jsonHeaders());
-        return restTemplate.exchange(msPacientesUrl + "/pacientes/" + id,
-                HttpMethod.PUT, entity, Object.class);
+        return proxied(restTemplate.exchange(msPacientesUrl + "/pacientes/" + id,
+                HttpMethod.PUT, entity, Object.class));
     }
 
     @DeleteMapping("/{id}")
@@ -57,5 +57,9 @@ public class PacienteController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         return headers;
+    }
+
+    private ResponseEntity<?> proxied(ResponseEntity<?> response) {
+        return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
     }
 }
