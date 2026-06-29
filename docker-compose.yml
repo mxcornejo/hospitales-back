@@ -173,4 +173,5 @@ volumes:
 
 networks:
   hospital-net:
+    external: true
     name: hospital-net
