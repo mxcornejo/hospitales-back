@@ -110,7 +110,7 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: hospital
       RABBITMQ_PASS: hospital123
-      RESUMENES_FIXED_RATE_MS: 300000
+      RESUMENES_FIXED_RATE_MS: 100000
     depends_on:
       oracle-db:
         condition: service_healthy
