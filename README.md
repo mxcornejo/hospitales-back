@@ -225,6 +225,17 @@ MS_SIGNOS_VITALES_URL=http://ms-signos-vitales:8082
 MS_ALERTAS_URL=http://ms-alertas:8083
 ```
 
+Si el BFF muestra un error intentando conectarse a `http://localhost:8082`,
+significa que el contenedor fue levantado con configuración antigua o sin las
+variables `MS_*`. En la VM/cloud recrea el BFF:
+
+```bash
+docker compose up -d --build --force-recreate bff
+docker compose exec bff printenv | grep MS_
+```
+
+La salida debe mostrar `MS_SIGNOS_VITALES_URL=http://ms-signos-vitales:8082`.
+
 Primero valida conectividad pública del BFF:
 
 ```bash
