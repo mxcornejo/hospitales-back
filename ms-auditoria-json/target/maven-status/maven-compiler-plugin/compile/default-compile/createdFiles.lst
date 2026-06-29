@@ -1,0 +1,5 @@
+cl/duoc/hospital/auditoria/MsAuditoriaJsonApplication.class
+cl/duoc/hospital/auditoria/dto/AlertaMessage.class
+cl/duoc/hospital/auditoria/service/AuditoriaJsonService.class
+cl/duoc/hospital/auditoria/config/RabbitConfig.class
+cl/duoc/hospital/auditoria/dto/ResumenSignosVitalesMessage.class

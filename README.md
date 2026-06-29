@@ -38,7 +38,57 @@ Sistema de microservicios para la gestión de señales vitales y alertas de paci
 ## Levantar con Docker
 
 ```bash
-docker-compose up --build
+docker compose up --build
+```
+
+El `docker-compose.yml` crea la red `hospital-net` y levanta todos los servicios
+necesarios: Oracle, RabbitMQ, BFF, pacientes, signos vitales, alertas y auditoría
+JSON.
+
+El BFF permite llamadas del frontend mediante `CORS_ALLOWED_ORIGINS`. Si cambias
+el dominio o puerto del frontend, agrega ese origin a esa variable en
+`docker-compose.yml`.
+
+Si vas a ejecutar el BFF manualmente con `docker run`, primero debe existir esa
+red y deben estar levantados Oracle y los microservicios en la misma red:
+
+```bash
+docker network create hospital-net
+```
+
+Si después vuelves a usar `docker compose up --build` y aparece este error:
+
+```text
+network hospital-net was found but has incorrect label com.docker.compose.network
+```
+
+significa que `hospital-net` fue creada manualmente y Compose necesita
+recrearla con sus propias etiquetas. Detén los contenedores que estén usando la
+red, elimina la red y vuelve a levantar el stack:
+
+```bash
+docker compose down
+docker network rm hospital-net
+docker compose up --build
+```
+
+Para este proyecto las variables de base de datos esperadas por Spring son
+`DB_URL`, `DB_USER` y `DB_PASS`:
+
+```bash
+docker run -d \
+  --name hospital-bff \
+  --network hospital-net \
+  -p 8080:8080 \
+  -e DB_URL='jdbc:oracle:thin:@oracle-db:1521/XEPDB1' \
+  -e DB_USER='hospital_user' \
+  -e DB_PASS='hospital123' \
+  -e AZURE_TENANT_ID='common' \
+  -e AZURE_CLIENT_ID='765a73b2-5568-41b3-a9a4-2d865745b67c' \
+  -e MS_PACIENTES_URL='http://hospital-ms-pacientes:8081' \
+  -e MS_SIGNOS_VITALES_URL='http://hospital-ms-signos-vitales:8082' \
+  -e MS_ALERTAS_URL='http://hospital-ms-alertas:8083' \
+  mxcornejo/hospital-bff:latest
 ```
 
 ## Servicios y puertos
@@ -49,7 +99,42 @@ docker-compose up --build
 | ms-pacientes      | 8081   | CRUD de pacientes                   |
 | ms-signos-vitales | 8082   | CRUD de signos vitales              |
 | ms-alertas        | 8083   | CRUD de alertas                     |
+| ms-auditoria-json | 8084   | Consumidor MQ para archivos JSON    |
 | Oracle DB         | 1521   | Base de datos Oracle XE 21          |
+| RabbitMQ          | 5672   | Broker AMQP                         |
+| RabbitMQ UI       | 15672  | Consola de administración           |
+
+RabbitMQ Management queda disponible en `http://localhost:15672` con usuario
+`hospital` y contraseña `hospital123`.
+
+## Mensajería RabbitMQ
+
+El flujo asíncrono usa exchanges `fanout` para distribuir cada mensaje a todos
+sus consumidores:
+
+| Exchange                    | Cola                          | Consumidor        | Acción                         |
+| --------------------------- | ----------------------------- | ----------------- | ------------------------------ |
+| hospital.alertas.exchange   | hospital.alertas.db.queue     | ms-alertas        | Guarda alerta en Oracle        |
+| hospital.alertas.exchange   | hospital.alertas.json.queue   | ms-auditoria-json | Genera archivo JSON de alerta  |
+| hospital.resumenes.exchange | hospital.resumenes.json.queue | ms-auditoria-json | Genera archivo JSON de resumen |
+
+`ms-signos-vitales` publica alertas cuando un signo vital queda fuera de los
+rangos configurados y publica un resumen periódico cada 5 minutos por defecto.
+
+Variables útiles:
+
+| Variable                | Valor por defecto |
+| ----------------------- | ----------------- |
+| RESUMENES_FIXED_RATE_MS | 300000            |
+| THRESHOLD_FC_MIN        | 60                |
+| THRESHOLD_FC_MAX        | 100               |
+| THRESHOLD_PS_MIN        | 90                |
+| THRESHOLD_PS_MAX        | 140               |
+| THRESHOLD_SPO2_MIN      | 92                |
+| THRESHOLD_TEMP_MAX      | 38                |
+
+Los archivos JSON se guardan en `backend/hospital-files/alertas` y
+`backend/hospital-files/resumenes` cuando el sistema se levanta con Docker.
 
 ## Usuarios por defecto
 
@@ -120,7 +205,51 @@ docker-compose up --build
 
 ## Pruebas con Postman
 
-### 1. Login
+### Docker Cloud / Docker Lab
+
+Cuando el stack corre en Docker Cloud/Lab, Postman debe llamar a la IP pública
+del BFF. No uses `localhost` ni `127.0.0.1` desde tu computador para probar
+cloud, porque esas direcciones apuntan a tu propia máquina.
+
+Para este despliegue:
+
+```text
+Base URL cloud: http://54.210.62.242:8080
+```
+
+Los microservicios siguen usando nombres internos dentro de Docker Compose:
+
+```text
+MS_PACIENTES_URL=http://ms-pacientes:8081
+MS_SIGNOS_VITALES_URL=http://ms-signos-vitales:8082
+MS_ALERTAS_URL=http://ms-alertas:8083
+```
+
+Primero valida conectividad pública del BFF:
+
+```bash
+curl -i http://54.210.62.242:8080/api/test/hello
+```
+
+Respuesta esperada:
+
+```json
+{"mensaje":"Hola desde el backend"}
+```
+
+Si Postman o curl muestran `Could not connect`, el problema todavía está en la
+publicación del puerto `8080` o en el firewall/security group de la VM. En la VM
+verifica:
+
+```bash
+docker compose ps
+docker logs hospital-bff
+curl -i http://localhost:8080/api/test/hello
+```
+
+`docker compose ps` debe mostrar el BFF con `0.0.0.0:8080->8080/tcp`.
+
+### 1. Login local
 
 ```
 POST http://localhost:8080/api/auth/login
@@ -133,6 +262,18 @@ Content-Type: application/json
 ```
 
 Guardar el campo `token` de la respuesta.
+
+### 1.b Login en Docker Cloud
+
+```
+POST http://54.210.62.242:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
 
 ### 2. Usar el token en las demás peticiones
 
@@ -160,6 +301,23 @@ Content-Type: application/json
 
 ```
 POST http://localhost:8080/api/signos-vitales
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "pacienteId": 1,
+  "frecuenciaCardiaca": 115,
+  "presionSistolica": 150,
+  "presionDiastolica": 90,
+  "saturacionOxigeno": 93.5,
+  "temperatura": 38.5
+}
+```
+
+En Docker Cloud usa la misma ruta contra la IP pública del BFF:
+
+```
+POST http://54.210.62.242:8080/api/signos-vitales
 Authorization: Bearer <token>
 Content-Type: application/json
 

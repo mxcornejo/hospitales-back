@@ -2,6 +2,8 @@ services:
   oracle-db:
     image: gvenzl/oracle-xe:21-slim-faststart
     container_name: oracle-db
+    networks:
+      - hospital-net
     environment:
       ORACLE_PASSWORD: oracle
       APP_USER: hospital_user
@@ -19,9 +21,33 @@ services:
       retries: 15
       start_period: 120s
 
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: hospital-rabbitmq
+    networks:
+      hospital-net:
+        aliases:
+          - rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: hospital
+      RABBITMQ_DEFAULT_PASS: hospital123
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
   bff:
     build: ./bff
-    container_name: bff
+    container_name: hospital-bff
+    networks:
+      hospital-net:
+        aliases:
+          - bff
     ports:
       - "8080:8080"
     environment:
@@ -31,6 +57,7 @@ services:
       JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
       AZURE_TENANT_ID: common
       AZURE_CLIENT_ID: 765a73b2-5568-41b3-a9a4-2d865745b67c
+      CORS_ALLOWED_ORIGINS: http://localhost:4200,http://127.0.0.1:4200,http://54.210.62.242,http://54.210.62.242:4200
       MS_PACIENTES_URL: http://ms-pacientes:8081
       MS_SIGNOS_VITALES_URL: http://ms-signos-vitales:8082
       MS_ALERTAS_URL: http://ms-alertas:8083
@@ -41,7 +68,11 @@ services:
 
   ms-pacientes:
     build: ./ms-pacientes
-    container_name: ms-pacientes
+    container_name: hospital-ms-pacientes
+    networks:
+      hospital-net:
+        aliases:
+          - ms-pacientes
     ports:
       - "8081:8081"
     environment:
@@ -55,31 +86,79 @@ services:
 
   ms-signos-vitales:
     build: ./ms-signos-vitales
-    container_name: ms-signos-vitales
+    container_name: hospital-ms-signos-vitales
+    networks:
+      hospital-net:
+        aliases:
+          - ms-signos-vitales
     ports:
       - "8082:8082"
     environment:
       DB_URL: jdbc:oracle:thin:@oracle-db:1521/XEPDB1
       DB_USER: hospital_user
       DB_PASS: hospital123
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: hospital
+      RABBITMQ_PASS: hospital123
+      RESUMENES_FIXED_RATE_MS: 300000
     depends_on:
       oracle-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     restart: on-failure
 
   ms-alertas:
     build: ./ms-alertas
-    container_name: ms-alertas
+    container_name: hospital-ms-alertas
+    networks:
+      hospital-net:
+        aliases:
+          - ms-alertas
     ports:
       - "8083:8083"
     environment:
       DB_URL: jdbc:oracle:thin:@oracle-db:1521/XEPDB1
       DB_USER: hospital_user
       DB_PASS: hospital123
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: hospital
+      RABBITMQ_PASS: hospital123
     depends_on:
       oracle-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
+  ms-auditoria-json:
+    build: ./ms-auditoria-json
+    container_name: hospital-ms-auditoria-json
+    networks:
+      hospital-net:
+        aliases:
+          - ms-auditoria-json
+    ports:
+      - "8084:8084"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: hospital
+      RABBITMQ_PASS: hospital123
+      HOSPITAL_ALERTAS_OUTPUT_DIR: /var/hospital/output/alertas
+      HOSPITAL_RESUMENES_OUTPUT_DIR: /var/hospital/output/resumenes
+    volumes:
+      - ./hospital-files:/var/hospital/output
+    depends_on:
+      rabbitmq:
         condition: service_healthy
     restart: on-failure
 
 volumes:
   oracle-data:
+
+networks:
+  hospital-net:
+    name: hospital-net
