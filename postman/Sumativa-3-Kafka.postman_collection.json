@@ -3,7 +3,11 @@
     "name": "Hospital - Sumativa 3 Kafka",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [{"key":"baseUrl","value":"http://localhost:8080"},{"key":"token","value":""}],
+  "variable": [
+    {"key":"baseUrl","value":"http://54.210.62.242:8080"},
+    {"key":"kafkaUiUrl","value":"http://32.197.126.175:8085"},
+    {"key":"token","value":""}
+  ],
   "item": [
     {
       "name": "1. Login",
