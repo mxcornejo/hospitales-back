@@ -2,6 +2,25 @@
 
 Sistema de microservicios para la gestión de señales vitales y alertas de pacientes críticos en un hospital.
 
+## Sumativa 3 - Streaming Kafka
+
+La mensajería RabbitMQ existente se conserva. La Sumativa 3 incorpora un flujo Kafka adicional desplegado en una EC2 separada:
+
+```text
+ms-productor-signos -> senales_vitales -> ms-procesador-signos -> alertas -> ms-alertas -> Oracle
+```
+
+`ms-productor-signos` publica una lectura cada segundo. Cada quinta lectura es anómala por defecto para facilitar la demostración. `ms-procesador-signos` evalúa los rangos y solo publica anomalías. `ms-alertas` consume esas alertas y las persiste de forma idempotente por `eventoId`.
+
+Antes de desplegar en la VM de aplicaciones, copie `.env.example` a `.env` y reemplace `10.0.0.20` por la IP privada de la EC2 Kafka. Luego ejecute:
+
+```bash
+docker compose up -d --build
+docker compose logs -f ms-productor-signos ms-procesador-signos ms-alertas
+```
+
+La infraestructura Kafka y su guía se encuentran en `../kafka-cluster`. Los servicios nuevos exponen health checks en los puertos 8085 y 8086. La colección `postman/Sumativa-3-Kafka.postman_collection.json` permite comprobar las alertas persistidas a través del BFF.
+
 ## Arquitectura
 
 ```
@@ -245,7 +264,7 @@ curl -i http://54.210.62.242:8080/api/test/hello
 Respuesta esperada:
 
 ```json
-{"mensaje":"Hola desde el backend"}
+{ "mensaje": "Hola desde el backend" }
 ```
 
 Si Postman o curl muestran `Could not connect`, el problema todavía está en la

@@ -1,0 +1,4 @@
+cl/duoc/hospital/procesador/dto/AlertaKafkaMessage.class
+cl/duoc/hospital/procesador/dto/SignoVitalEvent.class
+cl/duoc/hospital/procesador/ProcesadorSignosApplication.class
+cl/duoc/hospital/procesador/service/ProcesadorSignosService.class

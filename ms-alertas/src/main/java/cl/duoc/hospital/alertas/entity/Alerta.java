@@ -16,6 +16,9 @@ public class Alerta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "EVENTO_ID", unique = true, length = 36)
+    private String eventoId;
+
     @Column(name = "PACIENTE_ID", nullable = false)
     private Long pacienteId;
 
