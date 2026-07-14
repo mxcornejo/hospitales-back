@@ -40,6 +40,7 @@ services:
       timeout: 10s
       retries: 10
       start_period: 20s
+    restart: unless-stopped
 
   bff:
     build: ./bff
