@@ -44,6 +44,9 @@ public class SecurityConfig {
     @Value("${azure.activedirectory.tenant-id}")
     private String aadTenantId;
 
+    @Value("${azure.activedirectory.b2c-jwk-set-uri}")
+    private String b2cJwkSetUri;
+
     @Value("${app.cors.allowed-origins:http://localhost:4200,http://127.0.0.1:4200}")
     private String allowedOrigins;
 
@@ -100,6 +103,7 @@ public class SecurityConfig {
         tenants.add("consumers");
 
         List<JwtDecoder> decoders = new ArrayList<>();
+        decoders.add(NimbusJwtDecoder.withJwkSetUri(b2cJwkSetUri).build());
         for (String tenant : tenants) {
             String jwkSetUri = "https://login.microsoftonline.com/" + tenant + "/discovery/v2.0/keys";
             decoders.add(NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build());
